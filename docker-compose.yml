@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/portfolio
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_change_me}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
