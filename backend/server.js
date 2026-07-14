@@ -58,6 +58,28 @@ app.put('/api/name', authMiddleware, async (req, res) => {
   }
 });
 
+// Create new Admin (Protected)
+app.post('/api/admins', authMiddleware, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    const user = new User({ username, password });
+    await user.save();
+    
+    res.json({ message: 'New admin created successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Admin Login
 app.post('/api/login', async (req, res) => {
   try {
