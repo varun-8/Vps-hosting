@@ -85,6 +85,16 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
+    // Check against Environment Variables first
+    const envUser = process.env.ADMIN_USERNAME || 'admin';
+    const envPass = process.env.ADMIN_PASSWORD || 'admin';
+
+    if (username === envUser && password === envPass) {
+      const token = jwt.sign({ id: 'env_admin' }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1d' });
+      return res.json({ token, username: envUser });
+    }
+
+    // Fallback to database for secondary admins
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
