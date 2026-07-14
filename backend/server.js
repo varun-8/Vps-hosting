@@ -59,7 +59,8 @@ app.put('/api/name', authMiddleware, async (req, res) => {
 
     res.json({ message: 'Name updated successfully', name: profile.name });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in PUT /api/name:', err);
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
@@ -84,7 +85,8 @@ app.post('/api/admins', authMiddleware, async (req, res) => {
     
     res.json({ message: 'New admin created successfully' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in POST /api/admins:', err);
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
@@ -94,7 +96,8 @@ app.get('/api/history', authMiddleware, async (req, res) => {
     const history = await History.find().sort({ createdAt: -1 }).limit(10);
     res.json(history);
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in GET /api/history:', err);
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
@@ -105,7 +108,8 @@ app.get('/api/stats', authMiddleware, async (req, res) => {
     const profile = await Profile.findOne();
     res.json({ totalAdmins, currentName: profile ? profile.name : 'John Doe' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in GET /api/stats:', err);
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
