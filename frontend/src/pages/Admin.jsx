@@ -10,7 +10,40 @@ function Admin() {
   const [newPassword, setNewPassword] = useState('');
   const [addAdminMessage, setAddAdminMessage] = useState({ text: '', type: '' });
   
+  const [stats, setStats] = useState({ totalAdmins: 0, currentName: '' });
+  const [history, setHistory] = useState([]);
+
   const navigate = useNavigate();
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const [nameRes, statsRes, historyRes] = await Promise.all([
+        fetch('/api/name'),
+        fetch('/api/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/history', { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+
+      const nameData = await nameRes.json();
+      if (nameData.name) setName(nameData.name);
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        setHistory(historyData);
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -18,17 +51,7 @@ function Admin() {
       navigate('/login');
       return;
     }
-
-    fetch('/api/name')
-      .then(res => res.json())
-      .then(data => {
-        if (data.name) setName(data.name);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching name:', err);
-        setLoading(false);
-      });
+    fetchDashboardData();
   }, [navigate]);
 
   const handleUpdate = async (e) => {
@@ -49,6 +72,7 @@ function Admin() {
 
       if (res.ok) {
         setMessage({ text: 'Name updated successfully!', type: 'success' });
+        fetchDashboardData(); // Refresh history and stats
       } else if (res.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
@@ -80,6 +104,7 @@ function Admin() {
         setAddAdminMessage({ text: 'Admin created successfully!', type: 'success' });
         setNewUsername('');
         setNewPassword('');
+        fetchDashboardData(); // Refresh history and stats
       } else if (res.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
@@ -91,64 +116,100 @@ function Admin() {
     }
   };
 
-  if (loading) return <div className="card"><p>Loading...</p></div>;
+  if (loading) return <div className="card"><p>Loading Dashboard...</p></div>;
 
   return (
-    <div className="card">
-      <h2>Admin Dashboard</h2>
-      <p>Configure the display name for your portfolio.</p>
+    <div className="dashboard-layout">
+      {/* Left Column: Settings */}
+      <div className="dashboard-panel">
+        <h2>Control Panel</h2>
+        
+        <h3>Display Name</h3>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Configure the public name for your portfolio.</p>
+        {message.text && (
+          <div className={message.type === 'success' ? 'success-msg' : 'error-msg'}>
+            {message.text}
+          </div>
+        )}
+        <form onSubmit={handleUpdate}>
+          <div className="form-group">
+            <input 
+              type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter Display Name"
+              required 
+            />
+          </div>
+          <button type="submit" className="btn">Save Changes</button>
+        </form>
 
-      {message.text && (
-        <div className={message.type === 'success' ? 'success-msg' : 'error-msg'}>
-          {message.text}
+        <hr style={{ margin: '2rem 0', borderColor: 'var(--border-color)' }} />
+
+        <h3>Add New Admin</h3>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Create credentials for another administrator.</p>
+        {addAdminMessage.text && (
+          <div className={addAdminMessage.type === 'success' ? 'success-msg' : 'error-msg'}>
+            {addAdminMessage.text}
+          </div>
+        )}
+        <form onSubmit={handleAddAdmin}>
+          <div className="form-group">
+            <label>New Username</label>
+            <input 
+              type="text" 
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label>New Password</label>
+            <input 
+              type="password" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required 
+            />
+          </div>
+          <button type="submit" className="btn">Create Admin</button>
+        </form>
+      </div>
+
+      {/* Right Column: Stats & History */}
+      <div className="dashboard-panel">
+        <h2>Overview</h2>
+        
+        <div className="stat-grid">
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalAdmins}</div>
+            <div className="stat-label">Total Admins</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ fontSize: '1.2rem', padding: '0.8rem 0' }}>
+              {stats.currentName || 'N/A'}
+            </div>
+            <div className="stat-label">Current Name</div>
+          </div>
         </div>
-      )}
 
-      <form onSubmit={handleUpdate}>
-        <div className="form-group">
-          <label>Display Name</label>
-          <input 
-            type="text" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required 
-          />
+        <h3>Activity Log</h3>
+        <div className="activity-list">
+          {history.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>No recent activity.</p>
+          ) : (
+            history.map((item, index) => (
+              <div key={index} className="activity-item">
+                <div className="activity-action">{item.action}</div>
+                <div className="activity-details">{item.details}</div>
+                <div className="activity-time">
+                  {new Date(item.createdAt).toLocaleString()}
+                </div>
+              </div>
+            ))
+          )}
         </div>
-        <button type="submit" className="btn">Save Changes</button>
-      </form>
-
-      <hr style={{ margin: '2rem 0', borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-
-      <h3>Add New Admin</h3>
-      <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Create credentials for another administrator.</p>
-
-      {addAdminMessage.text && (
-        <div className={addAdminMessage.type === 'success' ? 'success-msg' : 'error-msg'}>
-          {addAdminMessage.text}
-        </div>
-      )}
-
-      <form onSubmit={handleAddAdmin}>
-        <div className="form-group">
-          <label>New Username</label>
-          <input 
-            type="text" 
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            required 
-          />
-        </div>
-        <div className="form-group">
-          <label>New Password</label>
-          <input 
-            type="password" 
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required 
-          />
-        </div>
-        <button type="submit" className="btn">Create Admin</button>
-      </form>
+      </div>
     </div>
   );
 }

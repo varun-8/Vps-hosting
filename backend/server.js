@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 
 const User = require('./models/User');
 const Profile = require('./models/Profile');
+const History = require('./models/History');
 const authMiddleware = require('./middleware/auth');
 
 const app = express();
@@ -52,6 +53,10 @@ app.put('/api/name', authMiddleware, async (req, res) => {
     }
     
     await profile.save();
+    
+    // Log Activity
+    await History.create({ action: 'Profile Updated', details: `Display name changed to ${profile.name}` });
+
     res.json({ message: 'Name updated successfully', name: profile.name });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -74,7 +79,31 @@ app.post('/api/admins', authMiddleware, async (req, res) => {
     const user = new User({ username, password });
     await user.save();
     
+    // Log Activity
+    await History.create({ action: 'Admin Created', details: `New admin user '${username}' was registered` });
+    
     res.json({ message: 'New admin created successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get History (Protected)
+app.get('/api/history', authMiddleware, async (req, res) => {
+  try {
+    const history = await History.find().sort({ createdAt: -1 }).limit(10);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get Stats (Protected)
+app.get('/api/stats', authMiddleware, async (req, res) => {
+  try {
+    const totalAdmins = await User.countDocuments();
+    const profile = await Profile.findOne();
+    res.json({ totalAdmins, currentName: profile ? profile.name : 'John Doe' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
